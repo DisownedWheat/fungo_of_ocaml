@@ -1,0 +1,8 @@
+lib: [
+  "_build/install/default/lib/fungo/META"
+  "_build/install/default/lib/fungo/dune-package"
+  "_build/install/default/lib/fungo/opam"
+]
+bin: [
+  "_build/install/default/bin/fungo"
+]

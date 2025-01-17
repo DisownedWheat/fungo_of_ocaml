@@ -1,0 +1,5 @@
+(test
+ (name test_fungo)
+ (libraries
+    ounit2
+    fungo))

@@ -1,0 +1,5 @@
+(executable
+ (public_name fungo)
+ (name main)
+ (libraries fungo)
+ (link_flags (-cclib -static)))
