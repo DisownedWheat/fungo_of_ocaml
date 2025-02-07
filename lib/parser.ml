@@ -234,21 +234,16 @@ let rec parse_let_expression tokens =
   >>= fun (body, rest) -> Ok (LetBinding.{ name; recursive; args; body }, rest)
 
 and parse_expression tokens bindings =
-  let handle_parens tail =
-    match parse_expression tail bindings with
-    | Ok (node, rest) ->
-      (match rest with
-       | T.Operator (Token.RParen, _) :: tail -> Ok (node, tail)
-       | _ :: _ ->
-         parse_expr tokens
-         >>= fun (expr, rest) -> Ok (Expression.{ bindings; value = expr }, rest)
-       | [] -> Error UnexpectedEOF)
-    | Error _ ->
-      parse_expr tokens
-      >>= fun (expr, rest) -> Ok (Expression.{ bindings; value = expr }, rest)
-  in
   match tokens with
-  | T.Operator (T.LParen, _) :: tail -> handle_parens tail
+  | T.Operator (T.LParen, _) :: tail ->
+    parse_expression tail bindings
+    >>= fun (node, rest) ->
+    (match rest with
+     | T.Operator (Token.RParen, _) :: tail -> Ok (node, tail)
+     | _ :: _ ->
+       parse_expr tokens
+       >>= fun (expr, rest) -> Ok (Expression.{ bindings; value = expr }, rest)
+     | [] -> Error UnexpectedEOF)
   | T.Let _ :: tail ->
     parse_let_expression tail
     >>= fun (binding, tokens) ->
@@ -263,7 +258,10 @@ and parse_expression tokens bindings =
 
 and parse_expr tokens =
   let expr = function
+    | T.Operator (T.LParen, x) :: T.Operator (T.RParen, _) :: tail ->
+      Ok (Expr.UnitExpr (Str.from_token x), tail)
     | T.IntLiteral x :: tail -> Ok (Expr.IntLiteral (Str.from_token x), tail)
+    | T.FloatLiteral x :: tail -> Ok (Expr.FloatLiteral (Str.from_token x), tail)
     | T.StringLiteral x :: tail -> Ok (Expr.StringLiteral (Str.from_token x), tail)
     | T.Identifier x :: tail ->
       let name = Str.from_token x in
@@ -283,6 +281,16 @@ and parse_expr tokens =
   expr tokens
   >>= fun (node, tokens) ->
   match tokens with
+  | T.Operator (T.LBracket, _) :: rest ->
+    parse_expression rest []
+    >>= fun (expression, rest) ->
+    (match rest with
+     | T.Operator (T.RBracket, _) :: rest ->
+       Ok (Expr.Index { left = node; right = expression }, rest)
+     | x -> Error (UnexpectedToken (x, "Index")))
+  | T.Operator (T.Dot, _) :: _ ->
+    parse_accessor tokens
+    |> fun (fields, rest) -> Ok (Expr.Accessor { base = node; fields }, rest)
   | T.Operator (T.Comma, _) :: tail ->
     parse_expr tail
     >>| fun (right, tokens) ->
@@ -298,6 +306,14 @@ and parse_expr tokens =
           { name = Str.from_token value; args = [ node; right ]; op = true }
       , tokens )
   | _ -> Ok (node, tokens)
+
+and parse_accessor tokens =
+  let rec loop fields = function
+    | T.Operator (T.Dot, _) :: T.Identifier x :: rest ->
+      loop (Str.from_token x :: fields) rest
+    | rest -> List.rev fields, rest
+  in
+  loop [] tokens
 
 and parse_record_literal tokens =
   let rec loop fields = function

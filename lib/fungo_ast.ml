@@ -159,7 +159,11 @@ and Expr : sig
         ; op : bool
         }
     | Accessor of
-        { left : Expression.t
+        { base : t
+        ; fields : ASTString.t list
+        }
+    | Index of
+        { left : t
         ; right : Expression.t
         }
     | Lambda of
@@ -176,7 +180,7 @@ and Expr : sig
         { condition : t
         ; consequent : Expression.t
         }
-    | UnitExpr
+    | UnitExpr of ASTString.t
   [@@deriving show, eq]
 end = struct
   type t =
@@ -200,7 +204,11 @@ end = struct
         ; op : bool
         }
     | Accessor of
-        { left : Expression.t
+        { base : t
+        ; fields : ASTString.t list
+        }
+    | Index of
+        { left : t
         ; right : Expression.t
         }
     | Lambda of
@@ -217,7 +225,7 @@ end = struct
         { condition : t
         ; consequent : Expression.t
         }
-    | UnitExpr
+    | UnitExpr of ASTString.t
   [@@deriving show, eq]
 end
 
