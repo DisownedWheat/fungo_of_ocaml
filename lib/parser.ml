@@ -42,6 +42,15 @@ let rec ident_type_match a b =
 ;;
 
 let rec parse_type_literal tokens =
+  let rec parse_modules mods = function
+    | T.Identifier name :: T.Operator (T.Dot, _) :: rest ->
+      parse_modules (name :: mods) rest
+    | T.Identifier name :: rest ->
+      let mod_names = name :: mods |> List.rev |> List.map ~f:Str.from_token in
+      Ok (mod_names, rest)
+    | x ->
+      Error (UnexpectedToken (x, "Unexpected token when parsing modules in type literal"))
+  in
   match tokens with
   | T.Operator (T.LParen, _) :: T.Operator (T.RParen, _) :: rest ->
     Ok (TypeLiteral.Unit, rest)
@@ -49,8 +58,12 @@ let rec parse_type_literal tokens =
     parse_type_literal rest >>| fun (x, rest) -> TypeLiteral.Slice x, rest
   | T.Operator (T.Deref, _) :: rest ->
     parse_type_literal rest >>| fun (x, rest) -> TypeLiteral.PointerType x, rest
-  | [] -> Error UnexpectedEOF
-  | x -> Error (UnexpectedToken (x, "Type Literal"))
+  | x ->
+    parse_modules [] x
+    >>= fun (mods, rest) ->
+    (match mods with
+     | [] -> Error (UnknownError tokens)
+     | name :: modules -> Ok (TypeLiteral.Type { name; modules }, rest))
 ;;
 
 let rec parse_record_definition tokens fields =
@@ -138,11 +151,16 @@ let parse_identifier tokens =
 ;;
 
 let parse_destructure tokens typed delimiter end_token =
-  let rec loop tokens fields =
+  let rec loop ?(delim_check = false) tokens fields =
     match tokens with
-    | T.Operator (x, _) :: rest when phys_equal x end_token -> Ok (fields, rest)
-    | T.Identifier t :: T.Operator (d, _) :: rest when phys_equal d delimiter ->
-      loop rest (Str.from_token t :: fields)
+    | T.Operator (x, _) :: rest when T.equal_operator x end_token ->
+      Ok (List.rev fields, rest)
+    | T.Operator (d, t) :: rest when T.equal_operator d delimiter ->
+      if delim_check
+      then
+        Error (UnexpectedToken (T.Operator (d, t) :: rest, "Double delim in destructure"))
+      else loop ~delim_check:true rest fields
+    | T.Identifier t :: rest -> loop ~delim_check:false rest (Str.from_token t :: fields)
     | [] -> Error UnexpectedEOF
     | x -> Error (UnexpectedToken (x, "Destructure parsing"))
   in
@@ -176,10 +194,10 @@ let rec parse_let_expression tokens =
        parse_destructure rest false T.Semicolon T.RBrace
        >>| fun (fields, tail) -> IdentifierType.RecordDestructure fields, tail
      | T.Operator (T.LParen, _) :: T.Operator (T.LBracket, _) :: rest ->
-       parse_destructure rest true T.Comma T.RBracket
+       parse_destructure rest true T.Semicolon T.RBracket
        >>| fun (fields, tail) -> IdentifierType.ArrayDestructure fields, tail
      | T.Operator (T.LBracket, _) :: rest ->
-       parse_destructure rest false T.Comma T.RBracket
+       parse_destructure rest false T.Semicolon T.RBracket
        >>| fun (fields, tail) -> IdentifierType.ArrayDestructure fields, tail
      | T.Operator (T.LParen, _) :: T.Operator (T.LParen, _) :: rest ->
        parse_destructure rest true T.Comma T.RParen
@@ -216,15 +234,21 @@ let rec parse_let_expression tokens =
   >>= fun (body, rest) -> Ok (LetBinding.{ name; recursive; args; body }, rest)
 
 and parse_expression tokens bindings =
+  let handle_parens tail =
+    match parse_expression tail bindings with
+    | Ok (node, rest) ->
+      (match rest with
+       | T.Operator (Token.RParen, _) :: tail -> Ok (node, tail)
+       | _ :: _ ->
+         parse_expr tokens
+         >>= fun (expr, rest) -> Ok (Expression.{ bindings; value = expr }, rest)
+       | [] -> Error UnexpectedEOF)
+    | Error _ ->
+      parse_expr tokens
+      >>= fun (expr, rest) -> Ok (Expression.{ bindings; value = expr }, rest)
+  in
   match tokens with
-  | T.Operator (T.LParen, _) :: tail ->
-    parse_expression tail bindings
-    >>= fun (node, rest) ->
-    (match rest with
-     | T.Operator (Token.RParen, _) :: tail -> Ok (node, tail)
-     | _ :: _ ->
-       Error (UnexpectedToken (rest, "Error finding RParen in Parenthesised expression"))
-     | [] -> Error UnexpectedEOF)
+  | T.Operator (T.LParen, _) :: tail -> handle_parens tail
   | T.Let _ :: tail ->
     parse_let_expression tail
     >>= fun (binding, tokens) ->
@@ -245,14 +269,25 @@ and parse_expr tokens =
       let ident = name, None in
       Ok (Expr.IdentifierExpr (IdentifierType.Identifier ident), tail)
     | T.Operator (T.LBracket, _) :: tail ->
-      parse_array_or_tuple_literal T.RBracket tail []
-      >>| fun (exprs, tail) -> Expr.ArrayLiteral exprs, tail
-    | T.Operator (T.LParen, _) :: tail -> parse_tuple_or_expr tail
+      parse_array tail >>| fun (exprs, tail) -> Expr.ArrayLiteral exprs, tail
+    | T.Operator (T.LParen, _) :: tail ->
+      parse_expr tail
+      >>= fun (node, tokens) ->
+      (match tokens with
+       | T.Operator (T.RParen, _) :: tail -> Ok (node, tail)
+       | x -> Error (UnexpectedToken (x, "Unexpected Token in parenthesised Expr")))
     | rest -> Error (UnknownError rest)
   in
   expr tokens
   >>= fun (node, tokens) ->
   match tokens with
+  | T.Operator (T.Comma, _) :: tail ->
+    parse_expr tail
+    >>| fun (right, tokens) ->
+    ( (match right with
+       | Expr.TupleLiteral exprs -> Expr.TupleLiteral (node :: exprs)
+       | right -> Expr.TupleLiteral [ node; right ])
+    , tokens )
   | T.Operator (Other _, value) :: tail ->
     parse_expr tail
     >>= fun (right, tokens) ->
@@ -262,25 +297,20 @@ and parse_expr tokens =
       , tokens )
   | _ -> Ok (node, tokens)
 
-and parse_tuple_or_expr tokens =
-  parse_array_or_tuple_literal T.RParen tokens []
-  >>| (fun (exprs, tail) -> Expr.TupleLiteral exprs, tail)
-  |> function
-  | Ok x -> Ok x
-  | Error e -> Error e
-
-and parse_array_or_tuple_literal end_token tokens exprs =
-  let rec loop comma_check exprs = function
-    | T.Operator (x, _) :: tail when phys_equal x end_token -> Ok (exprs, tail)
-    | (T.Operator (x, _) as c) :: tail when phys_equal x Comma ->
-      if comma_check
+and parse_array_or_tuple_literal end_token delim tokens exprs =
+  let rec loop delim_check exprs tokens =
+    match tokens with
+    | T.Operator (x, _) :: tail when T.equal_operator x end_token -> Ok (exprs, tail)
+    | (T.Operator (x, _) as c) :: tail when T.equal_operator x delim ->
+      if delim_check
       then Error (UnexpectedToken (c :: tail, "Unexpected Comma"))
       else loop true exprs tail
     | [] -> Error UnexpectedEOF
-    | _ -> parse_expr tokens >>= fun (expr, tail) -> loop comma_check (expr :: exprs) tail
+    | _ -> parse_expr tokens >>= fun (expr, tail) -> loop delim_check (expr :: exprs) tail
   in
   loop false exprs tokens
-;;
+
+and parse_array tokens = parse_array_or_tuple_literal T.RBracket T.Semicolon tokens []
 
 let parse_import tokens =
   let rec parse_fungo_import tokens values =

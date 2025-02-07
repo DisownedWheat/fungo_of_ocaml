@@ -211,10 +211,11 @@ let multiple_lets =
 let tuples_and_exprs =
   "Tuples and Exprs"
   >:: fun _ ->
-  let text = "\n\t\tlet x = (1, 2)\n\t\tlet (a, b) = x\n\t\t" in
+  let text = "\n\t\tlet x = ((1 + 3), 2)\n\t\tlet (a, b) = x\n\t\t" in
   parse
     text
     (compare_top_level
+       ~print:true
        ModuleDefinition.
          { name
          ; body =
@@ -225,7 +226,17 @@ let tuples_and_exprs =
                    ; args = []
                    ; body =
                        Expression.
-                         { bindings = []; value = Expr.TupleLiteral [ int "1"; int "2" ] }
+                         { bindings = []
+                         ; value =
+                             Expr.TupleLiteral
+                               [ Expr.FunctionCall
+                                   { name = str "+"
+                                   ; op = true
+                                   ; args = [ int "1"; int "3" ]
+                                   }
+                               ; int "2"
+                               ]
+                         }
                    }
              ; TopLevel.LetBind
                  LetBinding.
