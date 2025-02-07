@@ -1,11 +1,15 @@
 open Core
-(* open Fungo.Lexer *)
-
-let test_func () =
-  let rec loop l = match l with [] -> 0 | x :: rest -> x + loop rest in
-  let x = 5 in
-  loop [ x; 2; 3; 4; 5 ]
+module Lexer = Fungo.Lexer
+module Parser = Fungo.Parser
 
 let () =
-  let _ = test_func () in
-  print_endline (Char.is_print '>' |> Bool.to_string)
+  let input = "let x = 1" in
+  Lexer.lex_raw input
+  |> function
+  | Error e -> Lexer.show_lexer_error e |> print_endline
+  | Ok tokens ->
+    Parser.parse "MainTesting" tokens
+    |> (function
+     | Error e -> Parser.show_parser_error e |> print_endline
+     | Ok m -> Parser.Ast.ModuleDefinition.show m |> print_endline)
+;;

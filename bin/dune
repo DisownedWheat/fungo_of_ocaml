@@ -1,5 +1,7 @@
 (executable
  (public_name fungo)
  (name main)
- (libraries fungo)
- (link_flags (-cclib -static)))
+ (flags (:standard -g -bin-annot))
+ (libraries core fungo)
+ (modes (byte exe) (native exe)))
+ ; (link_flags (-cclib -static)))

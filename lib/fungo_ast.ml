@@ -1,6 +1,8 @@
 module ASTString = struct
   type t = { value : string; position : Token.position } [@@deriving show]
 
+  let equal a b = String.equal a.value b.value
+
   let from_token token =
     { value = token.Token.value; position = token.position }
 
@@ -8,82 +10,182 @@ module ASTString = struct
   let dummy = { value = ""; position = (0, 0) }
 end
 
-type type_literal =
-  | Unit
-  | Type of { name : ASTString.t; module_ : ASTString.t option }
-  | PointerType of type_literal
-  | Slice of type_literal
-[@@deriving show]
+module rec TypeLiteral : sig
+  type t =
+    | Unit
+    | Type of { name : ASTString.t; module_ : ASTString.t option }
+    | PointerType of t
+    | Slice of t
+  [@@deriving show, eq]
+end = struct
+  type t =
+    | Unit
+    | Type of { name : ASTString.t; module_ : ASTString.t option }
+    | PointerType of t
+    | Slice of t
+  [@@deriving show, eq]
+end
 
-and record_field = { name : ASTString.t; value : expression } [@@deriving show]
+and RecordField : sig
+  type t = { name : ASTString.t; value : Expression.t } [@@deriving show, eq]
+end = struct
+  type t = { name : ASTString.t; value : Expression.t } [@@deriving show, eq]
+end
 
-and record_type_field = { name : ASTString.t; type_ : type_literal }
-[@@deriving show]
+and RecordTypeField : sig
+  type t = { name : ASTString.t; type_ : TypeLiteral.t } [@@deriving show, eq]
+end = struct
+  type t = { name : ASTString.t; type_ : TypeLiteral.t } [@@deriving show, eq]
+end
 
-and type_def =
-  | TypeLiteral of type_literal
-  | Variant of (ASTString.t * type_def option) list
-  | RecordDefinition of record_type_field list
-  | TupleDefinition of { length : int; types : type_literal list }
-[@@deriving show]
+and TypeDef : sig
+  type t =
+    | TypeLiteral of TypeLiteral.t
+    | Variant of (ASTString.t * t option) list
+    | RecordDefinition of RecordTypeField.t list
+    | TupleDefinition of { length : int; types : TypeLiteral.t list }
+  [@@deriving show, eq]
+end = struct
+  type t =
+    | TypeLiteral of TypeLiteral.t
+    | Variant of (ASTString.t * t option) list
+    | RecordDefinition of RecordTypeField.t list
+    | TupleDefinition of { length : int; types : TypeLiteral.t list }
+  [@@deriving show, eq]
+end
 
-and identifier_type =
-  | Identifier of (ASTString.t * type_literal option)
-  | Deref of identifier_type
-  | Pointer of identifier_type
-  | ArrayDestructure of (ASTString.t list * type_literal option)
-  | RecordDestructure of (ASTString.t list * type_literal option)
-  | TupleDestructure of (ASTString.t list * type_literal option)
-  | Bucket
-[@@deriving show]
+and IdentifierType : sig
+  type t =
+    | Identifier of (ASTString.t * TypeLiteral.t option)
+    | Deref of t
+    | Pointer of t
+    | ArrayDestructure of (ASTString.t list * TypeLiteral.t option)
+    | RecordDestructure of (ASTString.t list * TypeLiteral.t option)
+    | TupleDestructure of (ASTString.t list * TypeLiteral.t option)
+    | Bucket
+  [@@deriving show, eq]
+end = struct
+  type t =
+    | Identifier of (ASTString.t * TypeLiteral.t option)
+    | Deref of t
+    | Pointer of t
+    | ArrayDestructure of (ASTString.t list * TypeLiteral.t option)
+    | RecordDestructure of (ASTString.t list * TypeLiteral.t option)
+    | TupleDestructure of (ASTString.t list * TypeLiteral.t option)
+    | Bucket
+  [@@deriving show, eq]
+end
 
-and let_binding = {
-  name : identifier_type;
-  recursive : bool;
-  args : identifier_type list;
-  body : expression;
-}
-[@@deriving show]
+and LetBinding : sig
+  type t = {
+    name : IdentifierType.t;
+    recursive : bool;
+    args : IdentifierType.t list;
+    body : Expression.t;
+  }
+  [@@deriving show, eq]
+end = struct
+  type t = {
+    name : IdentifierType.t;
+    recursive : bool;
+    args : IdentifierType.t list;
+    body : Expression.t;
+  }
+  [@@deriving show, eq]
+end
 
-and expression = { bindings : let_binding list; value : expr } [@@deriving show]
+and Expression : sig
+  type t = { bindings : LetBinding.t list; value : Expr.t }
+  [@@deriving show, eq]
+end = struct
+  type t = { bindings : LetBinding.t list; value : Expr.t }
+  [@@deriving show, eq]
+end
 
-and expr =
-  | IdentifierExpr of identifier_type
-  | BoolLiteral of bool
-  | StringLiteral of ASTString.t
-  | IntLiteral of ASTString.t
-  | FloatLiteral of ASTString.t
-  | IfExpr of {
-      condition : expr;
-      consequent : expression;
-      alternative : expression option;
-    }
-  | RecordLiteral of record_field list
-  | ArrayLiteral of expression list
-  | TupleLiteral of expression list
-  | FunctionCall of { name : ASTString.t; args : expression list; op : bool }
-  | Accessor of { left : expression; right : expression }
-  | Lambda of {
-      args : identifier_type list;
-      return_type : type_literal option;
-      body : expression;
-    }
-  | ForInLoop of {
-      condition_arg : identifier_type;
-      condition_expr : expr;
-      consequent : expression;
-    }
-  | WhileLoop of { condition : expr; consequent : expression }
-  | UnitExpr
-[@@deriving show]
+and Expr : sig
+  type t =
+    | Expression of Expression.t
+    | IdentifierExpr of IdentifierType.t
+    | BoolLiteral of bool
+    | StringLiteral of ASTString.t
+    | IntLiteral of ASTString.t
+    | FloatLiteral of ASTString.t
+    | IfExpr of {
+        condition : t;
+        consequent : Expression.t;
+        alternative : Expression.t option;
+      }
+    | RecordLiteral of RecordField.t list
+    | ArrayLiteral of t list
+    | TupleLiteral of t list
+    | FunctionCall of { name : ASTString.t; args : Expr.t list; op : bool }
+    | Accessor of { left : Expression.t; right : Expression.t }
+    | Lambda of {
+        args : IdentifierType.t list;
+        return_type : TypeLiteral.t option;
+        body : Expression.t;
+      }
+    | ForInLoop of {
+        condition_arg : IdentifierType.t;
+        condition_expr : t;
+        consequent : Expression.t;
+      }
+    | WhileLoop of { condition : t; consequent : Expression.t }
+    | UnitExpr
+  [@@deriving show, eq]
+end = struct
+  type t =
+    | Expression of Expression.t
+    | IdentifierExpr of IdentifierType.t
+    | BoolLiteral of bool
+    | StringLiteral of ASTString.t
+    | IntLiteral of ASTString.t
+    | FloatLiteral of ASTString.t
+    | IfExpr of {
+        condition : t;
+        consequent : Expression.t;
+        alternative : Expression.t option;
+      }
+    | RecordLiteral of RecordField.t list
+    | ArrayLiteral of t list
+    | TupleLiteral of t list
+    | FunctionCall of { name : ASTString.t; args : Expr.t list; op : bool }
+    | Accessor of { left : Expression.t; right : Expression.t }
+    | Lambda of {
+        args : IdentifierType.t list;
+        return_type : TypeLiteral.t option;
+        body : Expression.t;
+      }
+    | ForInLoop of {
+        condition_arg : IdentifierType.t;
+        condition_expr : t;
+        consequent : Expression.t;
+      }
+    | WhileLoop of { condition : t; consequent : Expression.t }
+    | UnitExpr
+  [@@deriving show, eq]
+end
 
-and module_definition = { name : ASTString.t; body : top_level list }
-[@@deriving show]
+and TopLevel : sig
+  type t =
+    | GoImport of { module_ : ASTString.t; alias : ASTString.t option }
+    | FungoImport of { modules : ASTString.t list }
+    | TypeDefinition of ASTString.t * TypeDef.t
+    | Module of ModuleDefinition.t
+    | LetBind of LetBinding.t
+  [@@deriving show, eq]
+end = struct
+  type t =
+    | GoImport of { module_ : ASTString.t; alias : ASTString.t option }
+    | FungoImport of { modules : ASTString.t list }
+    | TypeDefinition of ASTString.t * TypeDef.t
+    | Module of ModuleDefinition.t
+    | LetBind of LetBinding.t
+  [@@deriving show, eq]
+end
 
-and top_level =
-  | GoImport of { module_ : ASTString.t; alias : ASTString.t option }
-  | FungoImport of { modules : ASTString.t list }
-  | TypeDefinition of ASTString.t * type_def
-  | Module of module_definition
-  | Expr of expression
-[@@deriving show]
+and ModuleDefinition : sig
+  type t = { name : ASTString.t; body : TopLevel.t list } [@@deriving show, eq]
+end = struct
+  type t = { name : ASTString.t; body : TopLevel.t list } [@@deriving show, eq]
+end

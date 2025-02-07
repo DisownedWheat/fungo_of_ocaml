@@ -7,11 +7,13 @@ authors: ["Rob Larnach"]
 license: "MIT"
 tags: ["compiler"]
 homepage: "https://github.com/DisownedWheat/fungo_of_ocaml"
-doc: "https://url/to/documentation"
+doc: "https://github.com/DisownedWheat/fungo_of_ocaml"
 bug-reports: "https://github.com/DisownedWheat/fungo_of_ocaml/issues"
 depends: [
   "ocaml"
-  "dune" {>= "3.16"}
+  "dune" {>= "3.7"}
+  "utop"
+  "core"
   "odoc" {with-doc}
 ]
 build: [
