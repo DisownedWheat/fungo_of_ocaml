@@ -264,12 +264,14 @@ and parse_expression tokens bindings =
 and parse_expr tokens =
   let expr = function
     | T.IntLiteral x :: tail -> Ok (Expr.IntLiteral (Str.from_token x), tail)
+    | T.StringLiteral x :: tail -> Ok (Expr.StringLiteral (Str.from_token x), tail)
     | T.Identifier x :: tail ->
       let name = Str.from_token x in
       let ident = name, None in
       Ok (Expr.IdentifierExpr (IdentifierType.Identifier ident), tail)
     | T.Operator (T.LBracket, _) :: tail ->
-      parse_array tail >>| fun (exprs, tail) -> Expr.ArrayLiteral exprs, tail
+      parse_array tail >>| fun (exprs, tail) -> Expr.ArrayLiteral (List.rev exprs), tail
+    | T.Operator (T.LBrace, _) :: tail -> parse_record_literal tail
     | T.Operator (T.LParen, _) :: tail ->
       parse_expr tail
       >>= fun (node, tokens) ->
@@ -296,6 +298,19 @@ and parse_expr tokens =
           { name = Str.from_token value; args = [ node; right ]; op = true }
       , tokens )
   | _ -> Ok (node, tokens)
+
+and parse_record_literal tokens =
+  let rec loop fields = function
+    | T.Operator (T.RBrace, _) :: rest -> Ok (fields, rest)
+    | T.Identifier name :: T.Operator (T.Assign, _) :: rest ->
+      parse_expression rest []
+      >>= fun (node, tokens) ->
+      let new_field = RecordField.{ name = Str.from_token name; value = node } in
+      loop (new_field :: fields) tokens
+    | x -> Error (UnexpectedToken (x, "Record Literal"))
+  in
+  loop [] tokens
+  >>| fun (fields, remaining) -> Expr.RecordLiteral (List.rev fields), remaining
 
 and parse_array_or_tuple_literal end_token delim tokens exprs =
   let rec loop delim_check exprs tokens =

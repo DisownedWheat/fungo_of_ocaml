@@ -215,7 +215,6 @@ let tuples_and_exprs =
   parse
     text
     (compare_top_level
-       ~print:true
        ModuleDefinition.
          { name
          ; body =
@@ -251,6 +250,72 @@ let tuples_and_exprs =
          })
 ;;
 
+let array_literals =
+  "Array Literals"
+  >:: fun _ ->
+  let text = "let x = [1;2;3;(4,5)]" in
+  parse
+    text
+    (compare_top_level
+       ModuleDefinition.
+         { name
+         ; body =
+             [ TopLevel.LetBind
+                 LetBinding.
+                   { name = ident "x"
+                   ; recursive = false
+                   ; args = []
+                   ; body =
+                       Expression.
+                         { bindings = []
+                         ; value =
+                             Expr.ArrayLiteral
+                               [ int "1"
+                               ; int "2"
+                               ; int "3"
+                               ; Expr.TupleLiteral [ int "4"; int "5" ]
+                               ]
+                         }
+                   }
+             ]
+         })
+;;
+
+let record_literals =
+  "RecordLiterals"
+  >:: fun _ ->
+  let text = "let x = ({field=\"Hello\"})" in
+  parse
+    text
+    (compare_top_level
+       ModuleDefinition.
+         { name
+         ; body =
+             [ TopLevel.LetBind
+                 LetBinding.
+                   { name = ident "x"
+                   ; recursive = false
+                   ; args = []
+                   ; body =
+                       Expression.
+                         { bindings = []
+                         ; value =
+                             Expr.RecordLiteral
+                               [ RecordField.
+                                   { name = str "field"
+                                   ; value =
+                                       Expression.
+                                         { bindings = []
+                                         ; value = Expr.StringLiteral (str "Hello")
+                                         }
+                                   }
+                               ]
+                         }
+                   }
+             ]
+         })
+;;
+
 let tests =
   "test_suite"
   >::: first_parse_test
@@ -259,6 +324,8 @@ let tests =
        :: func_def
        :: tuples_and_exprs
        :: multiple_lets
+       :: array_literals
+       :: record_literals
        :: [ ("Is OK"
              >:: fun _ ->
              test_lexer ()
