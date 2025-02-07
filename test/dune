@@ -2,4 +2,4 @@
  (name test_fungo)
  (libraries
     ounit2
-    fungo))
+    fungo_lib))

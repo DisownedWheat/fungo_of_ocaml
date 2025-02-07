@@ -1,5 +1,5 @@
 open OUnit2
-open Fungo
+open Fungo_lib
 include Fungo_ast
 include Test_helpers
 module Str = Fungo_ast.ASTString

@@ -1,8 +1,10 @@
 open OUnit2
 open Core
-open Fungo
+open Fungo_lib
 include Fungo_ast
 module Str = Fungo_ast.ASTString
+module Parser = Fungo_lib.Parser
+module Lexer = Fungo_lib.Lexer
 
 let str = Str.from_string
 let name = Str.dummy
@@ -30,19 +32,19 @@ let compare (type a) (module M : ShowableEqual with type t = a) (expected : a) (
 ;;
 
 let lex text f =
-  match Fungo.Lexer.lex_raw text with
+  match Fungo_lib.Lexer.lex_raw text with
   | Ok t -> f t
   | Error e ->
-    Fungo.Lexer.show_lexer_error e |> print_endline;
+    Lexer.show_lexer_error e |> print_endline;
     assert_failure "Failed to lex input in parser test"
 ;;
 
 let parse text f =
   lex text (fun tokens ->
-    match Fungo.Parser.parse "testing" tokens with
+    match Parser.parse "testing" tokens with
     | Error e ->
       print_endline text;
-      Fungo.Parser.print_parser_error e;
+      Parser.print_parser_error e;
       assert_failure "Error parsing"
     | Ok m -> f m)
 ;;
@@ -56,4 +58,4 @@ let compare_top_level ?(print = false) expected m =
     m
 ;;
 
-let cmp_tokens a b : bool = List.for_all2_exn ~f:Fungo.Token.cmp a b
+let cmp_tokens a b : bool = List.for_all2_exn ~f:Token.cmp a b

@@ -1,6 +1,6 @@
 open Core
-module Lexer = Fungo.Lexer
-module Parser = Fungo.Parser
+module Lexer = Fungo_lib.Lexer
+module Parser = Fungo_lib.Parser
 
 let () =
   let input = "let x = 1" in

@@ -1,11 +1,13 @@
 open OUnit2
 open Core
-open Fungo
+open Fungo_lib
 include Fungo_ast
 include Test_helpers
 module Str = Fungo_ast.ASTString
+module Lexer = Fungo_lib.Lexer
+module Parser = Fungo_lib.Parser
 
-let test_lexer () = Fungo.Lexer.lex_raw "let x = [(5 * 1 + 7); 0]"
+let test_lexer () = Lexer.lex_raw "let x = [(5 * 1 + 7); 0]"
 
 let tests =
   "test_suite"
@@ -16,7 +18,7 @@ let tests =
             |> (function
              | Ok x -> Ok x
              | Error e ->
-               Fungo.Lexer.show_lexer_error e |> print_endline;
+               Lexer.show_lexer_error e |> print_endline;
                Error e)
             |> Result.is_ok
             |> assert_bool "Result is not OK")
@@ -26,7 +28,7 @@ let tests =
             |> function
             | Ok tokens -> assert_equal tokens tokens ~cmp:cmp_tokens
             | Error e ->
-              Fungo.Lexer.show_lexer_error e |> print_endline;
+              Lexer.show_lexer_error e |> print_endline;
               assert_failure "Result is not OK")
          ]
 ;;
