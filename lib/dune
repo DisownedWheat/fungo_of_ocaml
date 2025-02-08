@@ -1,5 +1,7 @@
 (library
  (name fungo_lib)
  (libraries core utop eio)
- (preprocess (pps ppx_deriving.show ppx_deriving.eq))
- (flags (:standard -warn-error -a -bin-annot)))
+ (preprocess
+  (pps ppx_deriving.show ppx_deriving.eq))
+ (flags
+  (:standard -warn-error -a -bin-annot)))
