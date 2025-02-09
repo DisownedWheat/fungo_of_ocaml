@@ -36,13 +36,13 @@ end
 and RecordField : sig
   type t =
     { name : ASTString.t
-    ; value : Expression.t
+    ; value : Expr.t
     }
   [@@deriving show, eq]
 end = struct
   type t =
     { name : ASTString.t
-    ; value : Expression.t
+    ; value : Expr.t
     }
   [@@deriving show, eq]
 end
@@ -110,7 +110,7 @@ and LetBinding : sig
     { name : IdentifierType.t
     ; recursive : bool
     ; args : IdentifierType.t list
-    ; body : Expression.t
+    ; body : Expr.t
     }
   [@@deriving show, eq]
 end = struct
@@ -118,7 +118,7 @@ end = struct
     { name : IdentifierType.t
     ; recursive : bool
     ; args : IdentifierType.t list
-    ; body : Expression.t
+    ; body : Expr.t
     }
   [@@deriving show, eq]
 end
@@ -139,6 +139,7 @@ end
 
 and Expr : sig
   type t =
+    | VoidExpr of (t * t)
     | Expression of Expression.t
     | IdentifierExpr of IdentifierType.t
     | BoolLiteral of bool
@@ -147,8 +148,8 @@ and Expr : sig
     | FloatLiteral of ASTString.t
     | IfExpr of
         { condition : t
-        ; consequent : Expression.t
-        ; alternative : Expression.t option
+        ; consequent : Expr.t
+        ; alternative : Expr.t option
         }
     | RecordLiteral of RecordField.t list
     | ArrayLiteral of t list
@@ -164,26 +165,27 @@ and Expr : sig
         }
     | Index of
         { left : t
-        ; right : Expression.t
+        ; right : Expr.t
         }
     | Lambda of
         { args : IdentifierType.t list
         ; return_type : TypeLiteral.t option
-        ; body : Expression.t
+        ; body : Expr.t
         }
     | ForInLoop of
         { condition_arg : IdentifierType.t
         ; condition_expr : t
-        ; consequent : Expression.t
+        ; consequent : Expr.t
         }
     | WhileLoop of
         { condition : t
-        ; consequent : Expression.t
+        ; consequent : Expr.t
         }
     | UnitExpr of ASTString.t
   [@@deriving show, eq]
 end = struct
   type t =
+    | VoidExpr of (t * t)
     | Expression of Expression.t
     | IdentifierExpr of IdentifierType.t
     | BoolLiteral of bool
@@ -192,8 +194,8 @@ end = struct
     | FloatLiteral of ASTString.t
     | IfExpr of
         { condition : t
-        ; consequent : Expression.t
-        ; alternative : Expression.t option
+        ; consequent : Expr.t
+        ; alternative : Expr.t option
         }
     | RecordLiteral of RecordField.t list
     | ArrayLiteral of t list
@@ -209,21 +211,21 @@ end = struct
         }
     | Index of
         { left : t
-        ; right : Expression.t
+        ; right : Expr.t
         }
     | Lambda of
         { args : IdentifierType.t list
         ; return_type : TypeLiteral.t option
-        ; body : Expression.t
+        ; body : Expr.t
         }
     | ForInLoop of
         { condition_arg : IdentifierType.t
         ; condition_expr : t
-        ; consequent : Expression.t
+        ; consequent : Expr.t
         }
     | WhileLoop of
         { condition : t
-        ; consequent : Expression.t
+        ; consequent : Expr.t
         }
     | UnitExpr of ASTString.t
   [@@deriving show, eq]

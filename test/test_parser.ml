@@ -16,8 +16,7 @@ let first_parse_test =
              { name = IdentifierType.Identifier (Str.from_string "x", None)
              ; recursive = false
              ; args = []
-             ; body =
-                 Expression.{ bindings = []; value = IntLiteral (Str.from_string "1") }
+             ; body = IntLiteral (Str.from_string "1")
              }
        ])
 ;;
@@ -35,23 +34,20 @@ let second_parse_test =
              ; recursive = false
              ; args = []
              ; body =
-                 Expression.
-                   { bindings =
-                       [ LetBinding.
-                           { name = IdentifierType.Identifier (Str.from_string "y", None)
-                           ; recursive = false
-                           ; args = []
-                           ; body =
-                               Expression.
-                                 { bindings = []
-                                 ; value = Expr.IntLiteral (Str.from_string "1")
-                                 }
-                           }
-                       ]
-                   ; value =
-                       Expr.IdentifierExpr
-                         (IdentifierType.Identifier (Str.from_string "x", None))
-                   }
+                 Expr.Expression
+                   Expression.
+                     { bindings =
+                         [ LetBinding.
+                             { name = IdentifierType.Identifier (Str.from_string "y", None)
+                             ; recursive = false
+                             ; args = []
+                             ; body = Expr.IntLiteral (Str.from_string "1")
+                             }
+                         ]
+                     ; value =
+                         Expr.IdentifierExpr
+                           (IdentifierType.Identifier (Str.from_string "x", None))
+                     }
              }
        ])
 ;;
@@ -69,12 +65,8 @@ let check_operators =
              ; recursive = false
              ; args = []
              ; body =
-                 Expression.
-                   { bindings = []
-                   ; value =
-                       Expr.FunctionCall
-                         { name = str "+"; args = [ int "1"; int "5" ]; op = true }
-                   }
+                 Expr.FunctionCall
+                   { name = str "+"; args = [ int "1"; int "5" ]; op = true }
              }
        ])
 ;;
@@ -92,17 +84,13 @@ let func_def =
              ; recursive = false
              ; args = [ ident "a"; ident "b" ]
              ; body =
-                 Expression.
-                   { bindings = []
-                   ; value =
-                       Expr.FunctionCall
-                         { name = str "+"
-                         ; op = true
-                         ; args =
-                             [ Expr.IdentifierExpr (ident "a")
-                             ; Expr.IdentifierExpr (ident "b")
-                             ]
-                         }
+                 Expr.FunctionCall
+                   { name = str "+"
+                   ; op = true
+                   ; args =
+                       [ Expr.IdentifierExpr (ident "a")
+                       ; Expr.IdentifierExpr (ident "b")
+                       ]
                    }
              }
        ])
@@ -116,26 +104,16 @@ let multiple_lets =
     text
     (compare_top_level
        [ TopLevel.LetBind
-           LetBinding.
-             { name = ident "x"
-             ; recursive = false
-             ; args = []
-             ; body = Expression.{ bindings = []; value = int "1" }
-             }
+           LetBinding.{ name = ident "x"; recursive = false; args = []; body = int "1" }
        ; TopLevel.LetBind
-           LetBinding.
-             { name = ident "y"
-             ; recursive = false
-             ; args = []
-             ; body = Expression.{ bindings = []; value = int "2" }
-             }
+           LetBinding.{ name = ident "y"; recursive = false; args = []; body = int "2" }
        ])
 ;;
 
 let tuples_and_exprs =
   "Tuples and Exprs"
   >:: fun _ ->
-  let text = "\n\t\tlet x = ((1 + 3), 2)\n\t\tlet (a, b) = x\n\t\t" in
+  let text = "\n\t\tlet x = ((1 + 3), 2, 4)\n\t\tlet (a, b) = x\n\t\t" in
   parse
     text
     (compare_top_level
@@ -145,23 +123,19 @@ let tuples_and_exprs =
              ; recursive = false
              ; args = []
              ; body =
-                 Expression.
-                   { bindings = []
-                   ; value =
-                       Expr.TupleLiteral
-                         [ Expr.FunctionCall
-                             { name = str "+"; op = true; args = [ int "1"; int "3" ] }
-                         ; int "2"
-                         ]
-                   }
+                 Expr.TupleLiteral
+                   [ Expr.FunctionCall
+                       { name = str "+"; op = true; args = [ int "1"; int "3" ] }
+                   ; int "2"
+                   ; int "4"
+                   ]
              }
        ; TopLevel.LetBind
            LetBinding.
              { name = IdentifierType.TupleDestructure ([ str "a"; str "b" ], None)
              ; recursive = false
              ; args = []
-             ; body =
-                 Expression.{ bindings = []; value = Expr.IdentifierExpr (ident "x") }
+             ; body = Expr.IdentifierExpr (ident "x")
              }
        ])
 ;;
@@ -179,16 +153,8 @@ let array_literals =
              ; recursive = false
              ; args = []
              ; body =
-                 Expression.
-                   { bindings = []
-                   ; value =
-                       Expr.ArrayLiteral
-                         [ int "1"
-                         ; int "2"
-                         ; int "3"
-                         ; Expr.TupleLiteral [ int "4"; int "5" ]
-                         ]
-                   }
+                 Expr.ArrayLiteral
+                   [ int "1"; int "2"; int "3"; Expr.TupleLiteral [ int "4"; int "5" ] ]
              }
        ])
 ;;
@@ -206,20 +172,10 @@ let record_literals =
              ; recursive = false
              ; args = []
              ; body =
-                 Expression.
-                   { bindings = []
-                   ; value =
-                       Expr.RecordLiteral
-                         [ RecordField.
-                             { name = str "field"
-                             ; value =
-                                 Expression.
-                                   { bindings = []
-                                   ; value = Expr.StringLiteral (str "Hello")
-                                   }
-                             }
-                         ]
-                   }
+                 Expr.RecordLiteral
+                   [ RecordField.
+                       { name = str "field"; value = Expr.StringLiteral (str "Hello") }
+                   ]
              }
        ])
 ;;
@@ -237,13 +193,9 @@ let accessors =
              ; recursive = false
              ; args = []
              ; body =
-                 Expression.
-                   { bindings = []
-                   ; value =
-                       Expr.Accessor
-                         { base = Expr.IdentifierExpr (ident "a")
-                         ; fields = [ str "b"; str "c"; str "def" ]
-                         }
+                 Expr.Accessor
+                   { base = Expr.IdentifierExpr (ident "a")
+                   ; fields = [ str "b"; str "c"; str "def" ]
                    }
              }
        ])
@@ -262,28 +214,26 @@ let indexes =
              ; recursive = false
              ; args = []
              ; body =
-                 Expression.
-                   { bindings = []
-                   ; value =
-                       Expr.Index
-                         { left =
-                             Expr.Expression
-                               Expression.
-                                 { bindings =
-                                     [ LetBinding.
-                                         { name = ident "z"
-                                         ; args = []
-                                         ; recursive = false
-                                         ; body =
-                                             Expression.{ bindings = []; value = int "1" }
-                                         }
-                                     ]
-                                 ; value = Expr.IdentifierExpr (ident "a")
-                                 }
-                         ; right =
-                             Expression.
-                               { bindings = []; value = Expr.StringLiteral (str "b") }
-                         }
+                 Expr.Index
+                   { left =
+                       Expr.Expression
+                         Expression.
+                           { bindings =
+                               [ LetBinding.
+                                   { name = ident "z"
+                                   ; args = []
+                                   ; recursive = false
+                                   ; body =
+                                       Expr.Expression
+                                         Expression.{ bindings = []; value = int "1" }
+                                   }
+                               ]
+                           ; value = Expr.IdentifierExpr (ident "a")
+                           }
+                   ; right =
+                       Expr.Expression
+                         Expression.
+                           { bindings = []; value = Expr.StringLiteral (str "b") }
                    }
              }
        ; TopLevel.LetBind
@@ -292,25 +242,23 @@ let indexes =
              ; recursive = false
              ; args = []
              ; body =
-                 Expression.
-                   { bindings = []
-                   ; value =
-                       Expr.Index
-                         { left = Expr.IdentifierExpr (ident "a")
-                         ; right =
-                             Expression.
-                               { bindings =
-                                   [ LetBinding.
-                                       { name = ident "x"
-                                       ; recursive = false
-                                       ; args = []
-                                       ; body =
-                                           Expression.{ bindings = []; value = int "1" }
-                                       }
-                                   ]
-                               ; value = Expr.IdentifierExpr (ident "x")
-                               }
-                         }
+                 Expr.Index
+                   { left = Expr.IdentifierExpr (ident "a")
+                   ; right =
+                       Expr.Expression
+                         Expression.
+                           { bindings =
+                               [ LetBinding.
+                                   { name = ident "x"
+                                   ; recursive = false
+                                   ; args = []
+                                   ; body =
+                                       Expr.Expression
+                                         Expression.{ bindings = []; value = int "1" }
+                                   }
+                               ]
+                           ; value = Expr.IdentifierExpr (ident "x")
+                           }
                    }
              }
        ])
