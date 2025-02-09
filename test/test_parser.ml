@@ -223,17 +223,12 @@ let indexes =
                                    { name = ident "z"
                                    ; args = []
                                    ; recursive = false
-                                   ; body =
-                                       Expr.Expression
-                                         Expression.{ bindings = []; value = int "1" }
+                                   ; body = int "1"
                                    }
                                ]
                            ; value = Expr.IdentifierExpr (ident "a")
                            }
-                   ; right =
-                       Expr.Expression
-                         Expression.
-                           { bindings = []; value = Expr.StringLiteral (str "b") }
+                   ; right = Expr.StringLiteral (str "b")
                    }
              }
        ; TopLevel.LetBind
@@ -252,9 +247,7 @@ let indexes =
                                    { name = ident "x"
                                    ; recursive = false
                                    ; args = []
-                                   ; body =
-                                       Expr.Expression
-                                         Expression.{ bindings = []; value = int "1" }
+                                   ; body = int "1"
                                    }
                                ]
                            ; value = Expr.IdentifierExpr (ident "x")
