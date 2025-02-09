@@ -257,6 +257,25 @@ let indexes =
        ])
 ;;
 
+let modules =
+  "modules"
+  >:: fun _ ->
+  let text = "module X = \n\t\t\tlet x = 1\n\t\t\tend" in
+  parse
+    text
+    (compare_top_level
+       [ TopLevel.Module
+           ModuleDefinition.
+             { name = str "X"
+             ; body =
+                 [ TopLevel.LetBind
+                     LetBinding.
+                       { name = ident "x"; recursive = false; args = []; body = int "1" }
+                 ]
+             }
+       ])
+;;
+
 let tests =
   [ first_parse_test
   ; second_parse_test
@@ -268,5 +287,6 @@ let tests =
   ; record_literals
   ; accessors
   ; indexes
+  ; modules
   ]
 ;;
