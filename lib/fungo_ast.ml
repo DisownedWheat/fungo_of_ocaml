@@ -123,24 +123,13 @@ end = struct
   [@@deriving show, eq]
 end
 
-and Expression : sig
-  type t =
-    { bindings : LetBinding.t list
-    ; value : Expr.t
-    }
-  [@@deriving show, eq]
-end = struct
-  type t =
-    { bindings : LetBinding.t list
-    ; value : Expr.t
-    }
-  [@@deriving show, eq]
-end
-
 and Expr : sig
   type t =
     | VoidExpr of (t * t)
-    | Expression of Expression.t
+    | Expression of
+        { bindings : LetBinding.t list
+        ; value : t
+        }
     | IdentifierExpr of IdentifierType.t
     | BoolLiteral of bool
     | StringLiteral of ASTString.t
@@ -155,8 +144,8 @@ and Expr : sig
     | ArrayLiteral of t list
     | TupleLiteral of t list
     | FunctionCall of
-        { name : ASTString.t
-        ; args : Expr.t list
+        { name : t
+        ; args : t list
         ; op : bool
         }
     | Accessor of
@@ -165,28 +154,31 @@ and Expr : sig
         }
     | Index of
         { left : t
-        ; right : Expr.t
+        ; right : t
         }
     | Lambda of
         { args : IdentifierType.t list
         ; return_type : TypeLiteral.t option
-        ; body : Expr.t
+        ; body : t
         }
     | ForInLoop of
         { condition_arg : IdentifierType.t
         ; condition_expr : t
-        ; consequent : Expr.t
+        ; consequent : t
         }
     | WhileLoop of
         { condition : t
-        ; consequent : Expr.t
+        ; consequent : t
         }
     | UnitExpr of ASTString.t
   [@@deriving show, eq]
 end = struct
   type t =
     | VoidExpr of (t * t)
-    | Expression of Expression.t
+    | Expression of
+        { bindings : LetBinding.t list
+        ; value : t
+        }
     | IdentifierExpr of IdentifierType.t
     | BoolLiteral of bool
     | StringLiteral of ASTString.t
@@ -194,15 +186,15 @@ end = struct
     | FloatLiteral of ASTString.t
     | IfExpr of
         { condition : t
-        ; consequent : Expr.t
-        ; alternative : Expr.t option
+        ; consequent : t
+        ; alternative : t option
         }
     | RecordLiteral of RecordField.t list
     | ArrayLiteral of t list
     | TupleLiteral of t list
     | FunctionCall of
-        { name : ASTString.t
-        ; args : Expr.t list
+        { name : t
+        ; args : t list
         ; op : bool
         }
     | Accessor of
@@ -211,21 +203,21 @@ end = struct
         }
     | Index of
         { left : t
-        ; right : Expr.t
+        ; right : t
         }
     | Lambda of
         { args : IdentifierType.t list
         ; return_type : TypeLiteral.t option
-        ; body : Expr.t
+        ; body : t
         }
     | ForInLoop of
         { condition_arg : IdentifierType.t
         ; condition_expr : t
-        ; consequent : Expr.t
+        ; consequent : t
         }
     | WhileLoop of
         { condition : t
-        ; consequent : Expr.t
+        ; consequent : t
         }
     | UnitExpr of ASTString.t
   [@@deriving show, eq]

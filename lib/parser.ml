@@ -15,11 +15,6 @@ type parser_error =
   | InvalidLetBinding of IdentifierType.t
 [@@deriving show]
 
-type binary_op_node =
-  [ `Expr of Expr.t
-  | `Expression of Expression.t
-  ]
-
 let print_parser_error e =
   match e with
   | UnexpectedError | UnexpectedEOF -> show_parser_error e |> print_endline
@@ -44,18 +39,6 @@ let rec ident_type_match a b =
   | IdentifierType.TupleDestructure _, IdentifierType.TupleDestructure _ -> true
   | Pointer x, Pointer y | Deref x, Deref y -> ident_type_match x y
   | _ -> false
-;;
-
-let wrap_expr expression =
-  match expression.Expression.bindings with
-  | [] -> expression.value
-  | _ -> Expr.Expression expression
-;;
-
-let wrap_wrap_expr expr =
-  match expr with
-  | Expr.Expression e -> wrap_expr e
-  | _ -> expr
 ;;
 
 let rec parse_type_literal tokens =
@@ -258,10 +241,9 @@ and parse_expression tokens bindings =
       >>= fun (node, rest) ->
       (match rest with
        | T.Operator (Token.RParen, _) :: tail -> Ok (node, tail)
-       (* | _ :: _ -> *)
-       (*   parse_expr tokens *)
-       (*   >>= fun (expr, rest) -> Ok (Expression.{ bindings; value = expr }, rest) *)
-       | _ -> Error UnexpectedEOF)
+       | x ->
+         let msg = UnexpectedToken (x, "Failed to find RParen in expression") in
+         Error msg)
     | T.Let _ :: tail ->
       parse_let_expression tail
       >>= fun (binding, tokens) ->
@@ -269,33 +251,38 @@ and parse_expression tokens bindings =
        | T.In _ :: tail | T.Operator (T.Semicolon, _) :: tail ->
          parse_expression tail (binding :: bindings)
        | [] -> Error UnexpectedEOF
-       | x -> Error (UnexpectedToken (x, "No In or ; in Let Expression")))
+       | x ->
+         let msg = UnexpectedToken (x, "No In or ; in Let Expression") in
+         Error msg)
     | _ ->
       parse_expr tokens
-      >>= fun (expr, rest) ->
-      Ok (Expr.Expression Expression.{ bindings; value = expr }, rest)
+      >>= fun (expr, rest) -> Ok (Expr.Expression { bindings; value = expr }, rest)
   in
-  expression >>= fun (node, tokens) -> parse_binary_op (wrap_wrap_expr node, tokens)
-(* >>| fun (new_node, tokens) -> *)
-(* match new_node with *)
-(* | Expr.Expression e when List.length e.bindings = 0 -> *)
-(*         Expr.Expression { bindings=node.bindings; value = e.Expression.value }, tokens *)
-(* | Expr.Expression e -> Expr.Expression e, tokens *)
-(* | e -> Expr.Expression Expression.{ bindings = new_node.bindings; value = e }, tokens ) *)
+  expression
+  >>| (fun (node, tokens) ->
+  match node with
+  | Expr.Expression e as expr ->
+    if List.length e.bindings = 0 then e.value, tokens else expr, tokens
+  | e -> e, tokens)
+  >>= fun (node, tokens) -> parse_binary_op (node, tokens)
 
+(* TODO: Function calls *)
 and parse_expr tokens =
   let expr = function
     | T.Operator (T.LParen, x) :: T.Operator (T.RParen, _) :: tail ->
       Ok (Expr.UnitExpr (Str.from_token x), tail)
     | T.IntLiteral x :: tail -> Ok (Expr.IntLiteral (Str.from_token x), tail)
     | T.FloatLiteral x :: tail -> Ok (Expr.FloatLiteral (Str.from_token x), tail)
+    | T.True _ :: tail -> Ok (Expr.BoolLiteral true, tail)
+    | T.False _ :: tail -> Ok (Expr.BoolLiteral false, tail)
     | T.StringLiteral x :: tail -> Ok (Expr.StringLiteral (Str.from_token x), tail)
     | T.Identifier x :: tail ->
       let name = Str.from_token x in
       let ident = name, None in
       Ok (Expr.IdentifierExpr (IdentifierType.Identifier ident), tail)
     | T.Operator (T.LBracket, _) :: tail ->
-      parse_array tail >>| fun (exprs, tail) -> Expr.ArrayLiteral (List.rev exprs), tail
+      parse_array tail []
+      >>| fun (exprs, tail) -> Expr.ArrayLiteral (List.rev exprs), tail
     | T.Operator (T.LBrace, _) :: tail -> parse_record_literal tail
     | T.Operator (T.LParen, _) :: tail ->
       parse_expr tail
@@ -303,24 +290,23 @@ and parse_expr tokens =
       (match tokens with
        | T.Operator (T.RParen, _) :: tail -> Ok (node, tail)
        | x -> Error (UnexpectedToken (x, "Unexpected Token in parenthesised Expr")))
+    | T.Let _ :: _ -> parse_expression tokens []
     | rest -> Error (UnknownError rest)
   in
   expr tokens
-  |> (function
-   | Ok (node, tokens) -> parse_binary_op (node, tokens)
-   | Error e ->
-     parse_expression tokens [] >>= parse_binary_op |> Result.map_error ~f:(fun _ -> e))
-  >>| fun (node, rest) ->
+  >>| (fun (node, tokens) ->
   match node with
-  | Expr.Expression e -> wrap_expr e, rest
-  | _ -> node, rest
+  | Expr.Expression e as expr ->
+    if List.length e.bindings = 0 then e.value, tokens else expr, tokens
+  | e -> e, tokens)
+  >>= parse_binary_op
 
 and parse_binary_op value =
   let node, tokens = value in
   match tokens with
   | T.Operator (T.Semicolon, _) :: rest ->
     parse_expression rest [] >>| fun (right, rest) -> Expr.VoidExpr (node, right), rest
-  | T.Operator (T.LBracket, _) :: rest ->
+  | T.Operator (T.IndexBracket, _) :: rest ->
     parse_expression rest []
     >>= fun (expression, rest) ->
     (match rest with
