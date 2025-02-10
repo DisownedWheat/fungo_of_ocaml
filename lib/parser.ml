@@ -120,12 +120,33 @@ let rec parse_variant_definition tokens ts =
     parse_variant_definition rest ((name, None) :: ts)
   | _ -> Ok (TypeDef.Variant ts, tokens)
 
-and parse_type_definition tokens =
+and parse_abstract_type tokens =
+  let rec loop comma_check generics = function
+    | T.Operator (T.RParen, _) :: rest -> Ok (generics, rest)
+    | T.Identifier n :: rest when comma_check ->
+      loop false [ ASTString.from_token n ] rest
+    | T.Operator (T.Comma, _) :: rest when not comma_check -> loop true generics rest
+    | x -> Error (UnexpectedToken (x, "Abstract types"))
+  in
   match tokens with
+  | T.Identifier a :: T.Identifier b :: rest ->
+    let name = ASTString.from_token b in
+    let generics = [ ASTString.from_token a ] in
+    Ok (name, generics, rest)
+  | T.Operator (T.LParen, _) :: rest ->
+    loop true [] rest
+    >>= fun (generics, rest) ->
+    (match rest with
+     | T.Identifier n :: rest -> Ok (ASTString.from_token n, generics, rest)
+     | x -> Error (UnexpectedToken (x, "Abstract types")))
+  | T.Identifier n :: rest -> Ok (ASTString.from_token n, [], rest)
+  | x -> Error (UnexpectedToken (x, "Abstract types"))
+
+and parse_type_definition = function
   | T.Operator (T.LBrace, _) :: rest -> parse_record_definition rest []
   | T.Operator (T.LParen, _) :: rest -> parse_tuple_definition rest []
-  | T.Operator (T.Pipe, _) :: _ -> parse_variant_definition tokens []
-  | x -> Error (UnknownError x)
+  | (T.Operator (T.Pipe, _) as op) :: rest -> parse_variant_definition (op :: rest) []
+  | rest -> parse_type_literal rest >>| fun (node, rest) -> TypeDef.TypeLiteral node, rest
 ;;
 
 let parse_identifier tokens =
@@ -301,6 +322,18 @@ and parse_expr tokens =
   | e -> e, tokens)
   >>= parse_binary_op
 
+and parse_func_call args tokens =
+  print_endline "Parsing func call";
+  match tokens with
+  | T.Operator (T.LParen, _) :: _
+  | T.Operator (T.LBracket, _) :: _
+  | T.Operator (T.LBrace, _) :: _
+  | T.Identifier _ :: _
+  | T.IntLiteral _ :: _
+  | T.FloatLiteral _ :: _ ->
+    parse_expr tokens >>= fun (node, rest) -> parse_func_call (node :: args) rest
+  | _ -> Ok (args, tokens)
+
 and parse_binary_op value =
   let node, tokens = value in
   match tokens with
@@ -328,11 +361,19 @@ and parse_binary_op value =
   | T.Operator (Other _, value) :: tail ->
     parse_expr tail
     >>= (fun (right, tokens) ->
-    Ok
-      ( Expr.FunctionCall
-          { name = Str.from_token value; args = [ node; right ]; op = true }
-      , tokens ))
+    let name =
+      Expr.IdentifierExpr (IdentifierType.Identifier (ASTString.from_token value, None))
+    in
+    Ok (Expr.FunctionCall { name; args = [ node; right ]; op = true }, tokens))
     >>= parse_binary_op
+  | T.Operator (T.LParen, _) :: _
+  | T.Operator (T.LBracket, _) :: _
+  | T.Operator (T.LBrace, _) :: _
+  | T.Identifier _ :: _
+  | T.IntLiteral _ :: _
+  | T.FloatLiteral _ :: _ ->
+    parse_func_call [] tokens
+    >>= fun (args, rest) -> Ok (Expr.FunctionCall { name = node; op = false; args }, rest)
   | _ -> Ok (node, tokens)
 
 and parse_accessor tokens =
@@ -344,23 +385,25 @@ and parse_accessor tokens =
   loop [] tokens
 
 and parse_record_literal tokens =
-  let rec loop fields = function
+  let rec loop fields tokens =
+    match tokens with
     | T.Operator (T.RBrace, _) :: rest -> Ok (fields, rest)
     | T.Identifier name :: T.Operator (T.Assign, _) :: rest ->
       parse_expression rest []
-      >>= fun (node, tokens) ->
+      >>= fun (node, new_tokens) ->
       let new_field = RecordField.{ name = Str.from_token name; value = node } in
-      loop (new_field :: fields) tokens
-    | x -> Error (UnexpectedToken (x, "Record Literal"))
+      loop (new_field :: fields) new_tokens
+    | x ->
+      print_endline "ERROR!\n\n";
+      Error (UnexpectedToken (x, "Record Literal"))
   in
   loop [] tokens
   >>| fun (fields, remaining) -> Expr.RecordLiteral (List.rev fields), remaining
 
-and parse_array_or_tuple_literal end_token delim tokens exprs =
-  let rec loop delim_check exprs tokens =
-    match tokens with
-    | T.Operator (x, _) :: tail when T.equal_operator x end_token -> Ok (exprs, tail)
-    | (T.Operator (x, _) as c) :: tail when T.equal_operator x delim ->
+and parse_array tokens exprs =
+  let rec loop delim_check exprs = function
+    | T.Operator (T.RBracket, _) :: tail -> Ok (exprs, tail)
+    | (T.Operator (T.Semicolon, _) as c) :: tail ->
       if delim_check
       then Error (UnexpectedToken (c :: tail, "Unexpected Comma"))
       else loop true exprs tail
@@ -368,14 +411,12 @@ and parse_array_or_tuple_literal end_token delim tokens exprs =
     | _ -> parse_expr tokens >>= fun (expr, tail) -> loop delim_check (expr :: exprs) tail
   in
   loop false exprs tokens
-
-and parse_array tokens = parse_array_or_tuple_literal T.RBracket T.Semicolon tokens []
+;;
 
 let parse_import tokens =
-  let rec parse_fungo_import tokens values =
-    match tokens with
+  let rec parse_fungo_import values = function
     | T.Identifier v :: T.Operator (T.Dot, _) :: rest ->
-      parse_fungo_import rest (Str.from_token v :: values)
+      parse_fungo_import (Str.from_token v :: values) rest
     | T.Identifier v :: rest -> Str.from_token v :: values, rest
     | _ -> values, tokens
   in
@@ -385,7 +426,7 @@ let parse_import tokens =
   | T.Identifier t :: T.StringLiteral t2 :: rest ->
     Ok (GoImport { module_ = Str.from_token t2; alias = Some (Str.from_token t) }, rest)
   | T.Identifier _ :: _ ->
-    parse_fungo_import tokens []
+    parse_fungo_import [] tokens
     |> fun (i, rest) -> Ok (TopLevel.FungoImport { modules = i }, rest)
   | [] -> Error UnexpectedEOF
   | x -> Error (UnexpectedToken (x, "Import"))
@@ -400,14 +441,20 @@ let rec parse_top_level = function
     TopLevel.Module { name = Str.from_token t; body = nodes }, rest
   | T.TypeKeyword _ :: T.Identifier t :: T.Operator (T.Assign, _) :: rest ->
     parse_type_definition rest
-    >>| fun (node, rest) -> TopLevel.TypeDefinition (Str.from_token t, node), rest
+    >>| fun (node, tokens) ->
+    let name = ASTString.from_token t in
+    TopLevel.TypeDefinition (name, node), tokens
+  | T.TypeKeyword _ :: rest ->
+    parse_abstract_type rest
+    >>| fun (name, generics, rest) ->
+    TopLevel.TypeDefinition (name, TypeDef.Abstract (name, generics)), rest
   | T.Import _ :: rest -> parse_import rest
   | [] -> Error UnexpectedEOF
   | x -> Error (UnexpectedToken (x, "Top Level"))
 
 and parse_module tokens nodes =
   match tokens with
-  | T.End _ :: rest -> Ok (nodes, rest)
+  | T.End _ :: rest -> Ok (List.rev nodes, rest)
   | _ -> parse_top_level tokens >>= fun (node, rest) -> parse_module rest (node :: nodes)
 ;;
 

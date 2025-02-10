@@ -27,6 +27,7 @@ type operator =
   | RParen
   | LBracket
   | RBracket
+  | IndexBracket
   | Other of string
 [@@deriving show, eq]
 

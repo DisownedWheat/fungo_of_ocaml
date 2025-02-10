@@ -63,6 +63,7 @@ end
 
 and TypeDef : sig
   type t =
+    | Abstract of (ASTString.t * ASTString.t list)
     | TypeLiteral of TypeLiteral.t
     | Variant of (ASTString.t * t option) list
     | RecordDefinition of RecordTypeField.t list
@@ -73,6 +74,7 @@ and TypeDef : sig
   [@@deriving show, eq]
 end = struct
   type t =
+    | Abstract of (ASTString.t * ASTString.t list)
     | TypeLiteral of TypeLiteral.t
     | Variant of (ASTString.t * t option) list
     | RecordDefinition of RecordTypeField.t list
@@ -137,8 +139,8 @@ and Expr : sig
     | FloatLiteral of ASTString.t
     | IfExpr of
         { condition : t
-        ; consequent : Expr.t
-        ; alternative : Expr.t option
+        ; consequent : t
+        ; alternative : t option
         }
     | RecordLiteral of RecordField.t list
     | ArrayLiteral of t list

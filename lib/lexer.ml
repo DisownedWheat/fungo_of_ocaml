@@ -136,11 +136,9 @@ let collapse_number state =
 
 let rec lex_number state =
   match state.input with
-  | c :: rest ->
-    if not (check_num_char c)
-    then collapse_number state
-    else lex_number { state with buffer = c :: state.buffer; input = rest }
-  | [] -> collapse_number state
+  | c :: rest when check_num_char c ->
+    lex_number { state with buffer = c :: state.buffer; input = rest }
+  | _ -> collapse_number state
 ;;
 
 let rec lex_string state =
@@ -219,8 +217,10 @@ let rec inner_lex state_result =
   match state_result with
   | Ok state ->
     (match state.input with
-     | '[' :: rest ->
+     | c :: '[' :: rest when Char.is_whitespace c ->
        Ok (make_token state (fun s -> Operator (LBracket, s)) "[" |> move_state rest)
+     | '[' :: rest ->
+       Ok (make_token state (fun s -> Operator (IndexBracket, s)) "[" |> move_state rest)
      | ']' :: rest ->
        Ok (make_token state (fun s -> Operator (RBracket, s)) "]" |> move_state rest)
      | '(' :: rest ->
@@ -231,6 +231,8 @@ let rec inner_lex state_result =
        Ok (make_token state (fun s -> Operator (LBrace, s)) "{" |> move_state rest)
      | '}' :: rest ->
        Ok (make_token state (fun s -> Operator (RBrace, s)) "}" |> move_state rest)
+     | ';' :: rest ->
+       Ok (make_token state (fun s -> Operator (Semicolon, s)) ";" |> move_state rest)
      | '"' :: rest -> lex_string { state with input = rest }
      | '\'' :: _ -> lex_char state
      | '/' :: '/' :: _ -> lex_comment state []
