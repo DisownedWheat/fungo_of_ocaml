@@ -2,8 +2,22 @@ open Core
 module Lexer = Fungo_lib.Lexer
 module Parser = Fungo_lib.Parser
 
+let input =
+  "\n\
+   \t\t\tmodule X = \n\
+   \t\t\t\ttype t\n\
+   \t\t\t\tlet value x y = x + y \n\
+   \t\t\t\tlet make () = {test = true}\n\
+   \t\t\tend\n\
+   let func a b =\n\
+   \tlet z = X.make () in\n\
+   \tX.value z 1.5\n\n\
+   let () =\n\
+   \tfunc 1 2\n\
+   \t\t\t"
+;;
+
 let () =
-  let input = "let x = 1" in
   Lexer.lex_raw input
   |> function
   | Error e -> Lexer.show_lexer_error e |> print_endline

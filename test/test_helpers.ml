@@ -9,6 +9,7 @@ module Lexer = Fungo_lib.Lexer
 let str = Str.from_string
 let name = Str.dummy
 let ident s = IdentifierType.Identifier (str s, None)
+let ident_expr s = Expr.IdentifierExpr (ident s)
 let int s = Expr.IntLiteral (str s)
 
 module type ShowableEqual = sig
@@ -31,16 +32,18 @@ let compare (type a) (module M : ShowableEqual with type t = a) (expected : a) (
         ^ print_ast (module M) got)
 ;;
 
-let lex text f =
+let lex ?(print = false) text f =
   match Fungo_lib.Lexer.lex_raw text with
-  | Ok t -> f t
+  | Ok t ->
+    if print then Token.print_tokens t;
+    f t
   | Error e ->
     Lexer.show_lexer_error e |> print_endline;
     assert_failure "Failed to lex input in parser test"
 ;;
 
-let parse text f =
-  lex text (fun tokens ->
+let parse ?(print = false) text f =
+  lex ~print text (fun tokens ->
     match Parser.parse "testing" tokens with
     | Error e ->
       print_endline text;

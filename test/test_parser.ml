@@ -35,19 +35,18 @@ let second_parse_test =
              ; args = []
              ; body =
                  Expr.Expression
-                   Expression.
-                     { bindings =
-                         [ LetBinding.
-                             { name = IdentifierType.Identifier (Str.from_string "y", None)
-                             ; recursive = false
-                             ; args = []
-                             ; body = Expr.IntLiteral (Str.from_string "1")
-                             }
-                         ]
-                     ; value =
-                         Expr.IdentifierExpr
-                           (IdentifierType.Identifier (Str.from_string "x", None))
-                     }
+                   { bindings =
+                       [ LetBinding.
+                           { name = IdentifierType.Identifier (Str.from_string "y", None)
+                           ; recursive = false
+                           ; args = []
+                           ; body = Expr.IntLiteral (Str.from_string "1")
+                           }
+                       ]
+                   ; value =
+                       Expr.IdentifierExpr
+                         (IdentifierType.Identifier (Str.from_string "x", None))
+                   }
              }
        ])
 ;;
@@ -66,7 +65,7 @@ let check_operators =
              ; args = []
              ; body =
                  Expr.FunctionCall
-                   { name = str "+"; args = [ int "1"; int "5" ]; op = true }
+                   { name = ident_expr "+"; args = [ int "1"; int "5" ]; op = true }
              }
        ])
 ;;
@@ -85,7 +84,7 @@ let func_def =
              ; args = [ ident "a"; ident "b" ]
              ; body =
                  Expr.FunctionCall
-                   { name = str "+"
+                   { name = ident_expr "+"
                    ; op = true
                    ; args =
                        [ Expr.IdentifierExpr (ident "a")
@@ -125,7 +124,7 @@ let tuples_and_exprs =
              ; body =
                  Expr.TupleLiteral
                    [ Expr.FunctionCall
-                       { name = str "+"; op = true; args = [ int "1"; int "3" ] }
+                       { name = ident_expr "+"; op = true; args = [ int "1"; int "3" ] }
                    ; int "2"
                    ; int "4"
                    ]
@@ -154,7 +153,13 @@ let array_literals =
              ; args = []
              ; body =
                  Expr.ArrayLiteral
-                   [ int "1"; int "2"; int "3"; Expr.TupleLiteral [ int "4"; int "5" ] ]
+                   [ VoidExpr
+                       ( int "1"
+                       , VoidExpr
+                           ( int "2"
+                           , VoidExpr (int "3", Expr.TupleLiteral [ int "4"; int "5" ]) )
+                       )
+                   ]
              }
        ])
 ;;
@@ -217,17 +222,16 @@ let indexes =
                  Expr.Index
                    { left =
                        Expr.Expression
-                         Expression.
-                           { bindings =
-                               [ LetBinding.
-                                   { name = ident "z"
-                                   ; args = []
-                                   ; recursive = false
-                                   ; body = int "1"
-                                   }
-                               ]
-                           ; value = Expr.IdentifierExpr (ident "a")
-                           }
+                         { bindings =
+                             [ LetBinding.
+                                 { name = ident "z"
+                                 ; args = []
+                                 ; recursive = false
+                                 ; body = int "1"
+                                 }
+                             ]
+                         ; value = Expr.IdentifierExpr (ident "a")
+                         }
                    ; right = Expr.StringLiteral (str "b")
                    }
              }
@@ -241,17 +245,16 @@ let indexes =
                    { left = Expr.IdentifierExpr (ident "a")
                    ; right =
                        Expr.Expression
-                         Expression.
-                           { bindings =
-                               [ LetBinding.
-                                   { name = ident "x"
-                                   ; recursive = false
-                                   ; args = []
-                                   ; body = int "1"
-                                   }
-                               ]
-                           ; value = Expr.IdentifierExpr (ident "x")
-                           }
+                         { bindings =
+                             [ LetBinding.
+                                 { name = ident "x"
+                                 ; recursive = false
+                                 ; args = []
+                                 ; body = int "1"
+                                 }
+                             ]
+                         ; value = Expr.IdentifierExpr (ident "x")
+                         }
                    }
              }
        ])
@@ -276,6 +279,111 @@ let modules =
        ])
 ;;
 
+let bigger_test =
+  "bigger-test"
+  >:: fun _ ->
+  let text =
+    "\n\
+     \t\t\tmodule X = \n\
+     \t\t\t\ttype t\n\
+     \t\t\t\tlet value x y = x + y * 5\n\
+     \t\t\t\tlet make v = {test = v}\n\
+     \t\t\tend\n\
+     let func a b =\n\
+     \tlet z = X.make {testing = true} in\n\
+     \tX.value z 1.5\n\n\
+     let () =\n\
+     \tfunc 1 2\n\
+     \t\t\t"
+  in
+  parse
+    text
+    (compare_top_level
+       [ TopLevel.Module
+           { name = str "X"
+           ; body =
+               [ TopLevel.TypeDefinition (str "t", TypeDef.Abstract (str "t", []))
+               ; TopLevel.LetBind
+                   LetBinding.
+                     { name = ident "value"
+                     ; recursive = false
+                     ; args = [ ident "x"; ident "y" ]
+                     ; body =
+                         Expr.FunctionCall
+                           { name = ident_expr "+"
+                           ; op = true
+                           ; args =
+                               [ Expr.IdentifierExpr (ident "x")
+                               ; Expr.FunctionCall
+                                   { name = ident_expr "*"
+                                   ; op = true
+                                   ; args = [ Expr.IdentifierExpr (ident "y"); int "5" ]
+                                   }
+                               ]
+                           }
+                     }
+               ; TopLevel.LetBind
+                   LetBinding.
+                     { name = ident "make"
+                     ; args = [ ident "v" ]
+                     ; recursive = false
+                     ; body =
+                         Expr.RecordLiteral
+                           [ RecordField.{ name = str "test"; value = ident_expr "v" } ]
+                     }
+               ]
+           }
+       ; TopLevel.LetBind
+           LetBinding.
+             { name = ident "func"
+             ; args = [ ident "a"; ident "b" ]
+             ; recursive = false
+             ; body =
+                 Expr.Expression
+                   { bindings =
+                       [ LetBinding.
+                           { name = ident "z"
+                           ; args = []
+                           ; recursive = false
+                           ; body =
+                               Expr.FunctionCall
+                                 { op = false
+                                 ; name =
+                                     Expr.Accessor
+                                       { base = ident_expr "X"; fields = [ str "make" ] }
+                                 ; args =
+                                     [ Expr.RecordLiteral
+                                         [ RecordField.
+                                             { name = str "testing"
+                                             ; value = Expr.BoolLiteral true
+                                             }
+                                         ]
+                                     ]
+                                 }
+                           }
+                       ]
+                   ; value =
+                       Expr.FunctionCall
+                         { op = false
+                         ; name =
+                             Expr.Accessor
+                               { base = ident_expr "X"; fields = [ str "value" ] }
+                         ; args = [ ident_expr "z"; Expr.FloatLiteral (str "1.5") ]
+                         }
+                   }
+             }
+       ; TopLevel.LetBind
+           LetBinding.
+             { name = IdentifierType.TupleDestructure ([], None)
+             ; recursive = false
+             ; args = []
+             ; body =
+                 Expr.FunctionCall
+                   { name = ident_expr "func"; op = false; args = [ int "1"; int "2" ] }
+             }
+       ])
+;;
+
 let tests =
   [ first_parse_test
   ; second_parse_test
@@ -288,5 +396,6 @@ let tests =
   ; accessors
   ; indexes
   ; modules
+  ; bigger_test
   ]
 ;;
