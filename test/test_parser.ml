@@ -153,13 +153,7 @@ let array_literals =
              ; args = []
              ; body =
                  Expr.ArrayLiteral
-                   [ VoidExpr
-                       ( int "1"
-                       , VoidExpr
-                           ( int "2"
-                           , VoidExpr (int "3", Expr.TupleLiteral [ int "4"; int "5" ]) )
-                       )
-                   ]
+                   [ int "1"; int "2"; int "3"; Expr.TupleLiteral [ int "4"; int "5" ] ]
              }
        ])
 ;;

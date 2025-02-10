@@ -302,8 +302,10 @@ and parse_expr tokens =
       let ident = name, None in
       Ok (Expr.IdentifierExpr (IdentifierType.Identifier ident), tail)
     | T.Operator (T.LBracket, _) :: tail ->
-      parse_array tail []
-      >>| fun (exprs, tail) -> Expr.ArrayLiteral (List.rev exprs), tail
+      parse_array tail
+      >>| fun (exprs, tail) ->
+      let flattened = List.concat_map ~f:Expr.flatten_void exprs in
+      Expr.ArrayLiteral flattened, tail
     | T.Operator (T.LBrace, _) :: tail -> parse_record_literal tail
     | T.Operator (T.LParen, _) :: tail ->
       parse_expr tail
@@ -400,7 +402,7 @@ and parse_record_literal tokens =
   loop [] tokens
   >>| fun (fields, remaining) -> Expr.RecordLiteral (List.rev fields), remaining
 
-and parse_array tokens exprs =
+and parse_array tokens =
   let rec loop delim_check exprs = function
     | T.Operator (T.RBracket, _) :: tail -> Ok (exprs, tail)
     | (T.Operator (T.Semicolon, _) as c) :: tail ->
@@ -410,7 +412,7 @@ and parse_array tokens exprs =
     | [] -> Error UnexpectedEOF
     | _ -> parse_expr tokens >>= fun (expr, tail) -> loop delim_check (expr :: exprs) tail
   in
-  loop false exprs tokens
+  loop false [] tokens
 ;;
 
 let parse_import tokens =

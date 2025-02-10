@@ -6,7 +6,11 @@ module ASTString = struct
   [@@deriving show]
 
   let equal a b = String.equal a.value b.value
-  let from_token token = { value = token.Token.value; position = token.position }
+
+  let from_token (token : Token.value) =
+    { value = token.value; position = token.position }
+  ;;
+
   let from_string value = { value; position = 0, 0 }
   let dummy = { value = ""; position = 0, 0 }
 end
@@ -174,6 +178,8 @@ and Expr : sig
         }
     | UnitExpr of ASTString.t
   [@@deriving show, eq]
+
+  val flatten_void : t -> t list
 end = struct
   type t =
     | VoidExpr of (t * t)
@@ -223,6 +229,14 @@ end = struct
         }
     | UnitExpr of ASTString.t
   [@@deriving show, eq]
+
+  let flatten_void e =
+    let rec loop exprs = function
+      | VoidExpr (left, right) -> left :: loop exprs right
+      | e -> e :: exprs
+    in
+    loop [] e
+  ;;
 end
 
 and TopLevel : sig
