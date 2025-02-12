@@ -24,6 +24,7 @@ let keyword_map =
   ; ("do", fun state -> Token.Do state)
   ; ("end", fun state -> Token.End state)
   ; ("rec", fun state -> Token.Rec state)
+  ; ("as", fun state -> Token.As state)
   ]
 ;;
 

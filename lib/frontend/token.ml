@@ -62,6 +62,7 @@ type t =
   | While of value
   | Do of value
   | Rec of value
+  | As of value
   | Operator of (operator * value)
   | Identifier of value
   | ChannelAssign of value

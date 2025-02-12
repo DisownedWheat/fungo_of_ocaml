@@ -1,11 +1,9 @@
 open OUnit2
 open Core
-open Fungo_lib
+include Fungo_lib
 include Fungo_ast
 include Test_helpers
 module Str = Fungo_ast.ASTString
-module Lexer = Fungo_lib.Lexer
-module Parser = Fungo_lib.Parser
 
 let test_lexer () = Lexer.lex_raw "let x = [(5 * 1 + 7); 0]"
 

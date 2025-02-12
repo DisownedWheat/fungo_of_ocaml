@@ -1,10 +1,8 @@
 open OUnit2
 open Core
-open Fungo_lib
+include Fungo_lib
 include Fungo_ast
-module Str = Fungo_ast.ASTString
-module Parser = Fungo_lib.Parser
-module Lexer = Fungo_lib.Lexer
+module Str = ASTString
 
 let str = Str.from_string
 let name = Str.dummy
@@ -33,7 +31,7 @@ let compare (type a) (module M : ShowableEqual with type t = a) (expected : a) (
 ;;
 
 let lex ?(print = false) text f =
-  match Fungo_lib.Lexer.lex_raw text with
+  match Lexer.lex_raw text with
   | Ok t ->
     if print then Token.print_tokens t;
     f t

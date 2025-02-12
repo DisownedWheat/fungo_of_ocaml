@@ -161,7 +161,7 @@ let array_literals =
 let record_literals =
   "RecordLiterals"
   >:: fun _ ->
-  let text = "let x = ({field=\"Hello\"})" in
+  let text = "let x = ({field=\"Hello\"; field2 = \"World\"})" in
   parse
     text
     (compare_top_level
@@ -174,6 +174,7 @@ let record_literals =
                  Expr.RecordLiteral
                    [ RecordField.
                        { name = str "field"; value = Expr.StringLiteral (str "Hello") }
+                   ; { name = str "field2"; value = Expr.StringLiteral (str "World") }
                    ]
              }
        ])
@@ -269,6 +270,77 @@ let modules =
                      LetBinding.
                        { name = ident "x"; recursive = false; args = []; body = int "1" }
                  ]
+             }
+       ])
+;;
+
+let function_calls =
+  "function_calls"
+  >:: fun _ ->
+  let text =
+    "let _ = func a b\n\
+     let _ = func2 1 + 5\n\
+     let _ = func3 (let x = 1 in x) [1;2;3] (func 1)"
+  in
+  parse
+    text
+    (compare_top_level
+       [ TopLevel.LetBind
+           LetBinding.
+             { name = IdentifierType.Bucket
+             ; recursive = false
+             ; args = []
+             ; body =
+                 Expr.FunctionCall
+                   { name = ident_expr "func"
+                   ; args = [ ident_expr "a"; ident_expr "b" ]
+                   ; op = false
+                   }
+             }
+       ; TopLevel.LetBind
+           LetBinding.
+             { name = IdentifierType.Bucket
+             ; recursive = false
+             ; args = []
+             ; body =
+                 Expr.FunctionCall
+                   { name = ident_expr "func2"
+                   ; op = false
+                   ; args =
+                       [ FunctionCall
+                           { name = ident_expr "+"
+                           ; args = [ int "1"; int "5" ]
+                           ; op = true
+                           }
+                       ]
+                   }
+             }
+       ; TopLevel.LetBind
+           LetBinding.
+             { name = IdentifierType.Bucket
+             ; recursive = false
+             ; args = []
+             ; body =
+                 FunctionCall
+                   { name = ident_expr "func3"
+                   ; op = false
+                   ; args =
+                       [ Expression
+                           { bindings =
+                               [ LetBinding.
+                                   { name = ident "x"
+                                   ; recursive = false
+                                   ; args = []
+                                   ; body = int "1"
+                                   }
+                               ]
+                           ; value = ident_expr "x"
+                           }
+                       ; Expr.ArrayLiteral [ int "1"; int "2"; int "3" ]
+                       ; Expr.FunctionCall
+                           { name = ident_expr "func"; op = false; args = [ int "1" ] }
+                       ]
+                   }
              }
        ])
 ;;
@@ -390,6 +462,7 @@ let tests =
   ; accessors
   ; indexes
   ; modules
+  ; function_calls
   ; bigger_test
   ]
 ;;

@@ -5,3 +5,5 @@
   (pps ppx_deriving.show ppx_deriving.eq))
  (flags
   (:standard -warn-error -a -bin-annot)))
+
+(include_subdirs unqualified)
