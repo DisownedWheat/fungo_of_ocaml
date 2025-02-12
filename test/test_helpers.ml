@@ -1,5 +1,5 @@
 open OUnit2
-open Core
+open Base
 include Fungo_lib
 include Fungo_ast
 module Str = ASTString
@@ -36,7 +36,7 @@ let lex ?(print = false) text f =
     if print then Token.print_tokens t;
     f t
   | Error e ->
-    Lexer.show_lexer_error e |> print_endline;
+    Lexer.show_lexer_error e |> Stdio.print_endline;
     assert_failure "Failed to lex input in parser test"
 ;;
 
@@ -44,14 +44,14 @@ let parse ?(print = false) text f =
   lex ~print text (fun tokens ->
     match Parser.parse "testing" tokens with
     | Error e ->
-      print_endline text;
+      Stdio.print_endline text;
       Parser.print_parser_error e;
       assert_failure "Error parsing"
     | Ok m -> f m)
 ;;
 
 let compare_top_level ?(print = false) expected m =
-  if print then print_ast (module ModuleDefinition) m |> print_endline;
+  if print then print_ast (module ModuleDefinition) m |> Stdio.print_endline;
   let expected = ModuleDefinition.{ name; body = expected } in
   compare
     (module ModuleDefinition)

@@ -3,7 +3,7 @@
  (name fungo)
  (flags
   (:standard -g -bin-annot))
- (libraries core fungo_lib)
+ (libraries base fungo_lib stdio)
  (modes
   (byte exe)
   (native exe)))

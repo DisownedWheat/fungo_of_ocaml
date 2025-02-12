@@ -1,31 +1,34 @@
-open Core
+open Base
+open Stdio
 
 let keyword_map =
-  [ ("let", fun state -> Token.Let state)
-  ; ("open", fun state -> Token.Import state)
-  ; ("of", fun state -> Token.Of state)
-  ; ("go", fun state -> Token.Go state)
-  ; ("if", fun state -> Token.If state)
-  ; ("then", fun state -> Token.Then state)
-  ; ("else", fun state -> Token.Else state)
-  ; ("true", fun state -> Token.True state)
-  ; ("false", fun state -> Token.False state)
-  ; ("match", fun state -> Token.Match state)
-  ; ("function", fun state -> Token.FunctionMatch state)
-  ; ("with", fun state -> Token.With state)
-  ; ("when", fun state -> Token.When state)
-  ; ("type", fun state -> Token.TypeKeyword state)
-  ; ("mutable", fun state -> Token.Mut state)
-  ; ("module", fun state -> Token.Module state)
-  ; ("fun", fun state -> Token.Lambda state)
-  ; ("for", fun state -> Token.For state)
-  ; ("in", fun state -> Token.In state)
-  ; ("while", fun state -> Token.While state)
-  ; ("do", fun state -> Token.Do state)
-  ; ("end", fun state -> Token.End state)
-  ; ("rec", fun state -> Token.Rec state)
-  ; ("as", fun state -> Token.As state)
-  ]
+  Map.of_alist_exn
+    (module String)
+    [ ("let", fun state -> Token.Let state)
+    ; ("open", fun state -> Token.Import state)
+    ; ("of", fun state -> Token.Of state)
+    ; ("go", fun state -> Token.Go state)
+    ; ("if", fun state -> Token.If state)
+    ; ("then", fun state -> Token.Then state)
+    ; ("else", fun state -> Token.Else state)
+    ; ("true", fun state -> Token.True state)
+    ; ("false", fun state -> Token.False state)
+    ; ("match", fun state -> Token.Match state)
+    ; ("function", fun state -> Token.FunctionMatch state)
+    ; ("with", fun state -> Token.With state)
+    ; ("when", fun state -> Token.When state)
+    ; ("type", fun state -> Token.TypeKeyword state)
+    ; ("mutable", fun state -> Token.Mut state)
+    ; ("module", fun state -> Token.Module state)
+    ; ("fun", fun state -> Token.Lambda state)
+    ; ("for", fun state -> Token.For state)
+    ; ("in", fun state -> Token.In state)
+    ; ("while", fun state -> Token.While state)
+    ; ("do", fun state -> Token.Do state)
+    ; ("end", fun state -> Token.End state)
+    ; ("rec", fun state -> Token.Rec state)
+    ; ("as", fun state -> Token.As state)
+    ]
 ;;
 
 type state =
@@ -77,11 +80,7 @@ let op_chars =
 let is_op_char c = List.find op_chars ~f:(Char.equal c) |> Option.is_some
 let check_num_char c = Char.is_digit c || Char.equal c '.' || Char.equal c '_'
 let check_ident_char c = Char.is_alphanum c || Char.equal '_' c
-
-let check_keyword value =
-  List.find keyword_map ~f:(fun (str, _) -> String.equal str value)
-  |> Option.map ~f:Tuple.T2.get2
-;;
+let check_keyword = Map.find keyword_map
 
 let get_error_position_buffer state =
   state.current_position - List.length state.buffer, state.current_position
@@ -262,4 +261,4 @@ let lex_raw input =
   | Ok s -> Error (UnexpectedError s)
 ;;
 
-let lex file_name = In_channel.read_all file_name |> lex_raw
+let lex file_name = Stdio.In_channel.read_all file_name |> lex_raw

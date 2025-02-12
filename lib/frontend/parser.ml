@@ -1,4 +1,5 @@
-open Core
+open Base
+open Stdio
 include Fungo_ast
 module Str = ASTString
 module T = Token
@@ -19,8 +20,8 @@ let print_parser_error e =
   match e with
   | UnexpectedError _ | UnexpectedEOF _ -> show_parser_error e |> print_endline
   | UnexpectedToken (l, msg) ->
-    print_string "UnexpectedToken in ";
-    print_endline msg;
+    Stdio.print_string "UnexpectedToken in ";
+    Stdio.print_endline msg;
     List.map l ~f:T.show |> List.iter ~f:print_endline;
     ()
   | UnknownError (l, s) ->

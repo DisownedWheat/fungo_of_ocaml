@@ -1,4 +1,4 @@
-open Core
+open Base
 
 type position = int * int [@@deriving show]
 
@@ -105,4 +105,4 @@ let char value =
 ;;
 
 let dummy kind = kind { line = 0; column = 0; position = 0, 0; value = "" }
-let print_tokens l = List.map ~f:show l |> List.iter ~f:print_endline
+let print_tokens l = List.map ~f:show l |> List.iter ~f:Stdio.print_endline

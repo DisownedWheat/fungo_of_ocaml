@@ -1,5 +1,5 @@
 open OUnit2
-open Core
+open Base
 include Fungo_lib
 include Fungo_ast
 include Test_helpers
@@ -16,7 +16,7 @@ let tests =
             |> (function
              | Ok x -> Ok x
              | Error e ->
-               Lexer.show_lexer_error e |> print_endline;
+               Lexer.show_lexer_error e |> Stdio.print_endline;
                Error e)
             |> Result.is_ok
             |> assert_bool "Result is not OK")
@@ -26,7 +26,7 @@ let tests =
             |> function
             | Ok tokens -> assert_equal tokens tokens ~cmp:cmp_tokens
             | Error e ->
-              Lexer.show_lexer_error e |> print_endline;
+              Lexer.show_lexer_error e |> Stdio.print_endline;
               assert_failure "Result is not OK")
          ]
 ;;
