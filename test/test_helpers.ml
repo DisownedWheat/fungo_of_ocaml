@@ -31,7 +31,7 @@ let compare (type a) (module M : ShowableEqual with type t = a) (expected : a) (
 ;;
 
 let lex ?(print = false) text f =
-  match Lexer.lex_raw text with
+  match Lexer.lex text with
   | Ok t ->
     if print then Token.print_tokens t;
     f t

@@ -1,5 +1,4 @@
 open Base
-open Stdio
 
 let keyword_map =
   Map.of_alist_exn
@@ -245,7 +244,7 @@ let rec inner_lex state_result =
   | _ -> state_result
 ;;
 
-let lex_raw input =
+let lex input =
   inner_lex
     (Ok
        { input = input |> String.to_list
@@ -260,5 +259,3 @@ let lex_raw input =
   | Err e -> Error e
   | Ok s -> Error (UnexpectedError s)
 ;;
-
-let lex file_name = Stdio.In_channel.read_all file_name |> lex_raw

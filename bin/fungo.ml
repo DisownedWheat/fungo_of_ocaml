@@ -1,6 +1,4 @@
-open Base
-module Lexer = Fungo_lib.Lexer
-module Parser = Fungo_lib.Parser
+open Fungo_lib
 
 let input =
   "\n\
@@ -17,13 +15,4 @@ let input =
    \t\t\t"
 ;;
 
-let () =
-  Lexer.lex_raw input
-  |> function
-  | Error e -> Lexer.show_lexer_error e |> Stdio.print_endline
-  | Ok tokens ->
-    Parser.parse "MainTesting" tokens
-    |> (function
-     | Error e -> Parser.show_parser_error e |> Stdio.print_endline
-     | Ok m -> Parser.Ast.ModuleDefinition.show m |> Stdio.print_endline)
-;;
+let () = Frontend.compile input

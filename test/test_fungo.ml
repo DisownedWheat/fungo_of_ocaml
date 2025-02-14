@@ -5,7 +5,7 @@ include Fungo_ast
 include Test_helpers
 module Str = Fungo_ast.ASTString
 
-let test_lexer () = Lexer.lex_raw "let x = [(5 * 1 + 7); 0]"
+let test_lexer () = Lexer.lex "let x = [(5 * 1 + 7); 0]"
 
 let tests =
   "test_suite"
