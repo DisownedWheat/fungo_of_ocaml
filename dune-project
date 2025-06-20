@@ -24,7 +24,7 @@
  (name fungo)
  (synopsis "An Ocaml inspired language that compiles to Go")
  (description "A longer description will be forthcoming")
- (depends ocaml dune utop core)
+ (depends ocaml dune utop core ounit2)
  (tags
   (compiler)))
 
