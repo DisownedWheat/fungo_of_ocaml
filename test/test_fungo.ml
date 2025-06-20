@@ -10,6 +10,7 @@ let test_lexer () = Lexer.lex "let x = [(5 * 1 + 7); 0]"
 let tests =
   "test_suite"
   >::: Test_parser.tests
+       @ Test_typechecker.tests
        @ [ ("Is OK"
             >:: fun _ ->
             test_lexer ()
@@ -31,4 +32,7 @@ let tests =
          ]
 ;;
 
-let () = run_test_tt_main tests
+let () =
+  Stdio.print_endline "Running tests";
+  run_test_tt_main tests
+;;
