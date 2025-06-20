@@ -1,6 +1,8 @@
+open Base
 module Ast = Fungo_ast
 
 type 'a module_def =
-  { name : string
+  { name : Ast.ASTString.t
   ; types : 'a list
   }
+[@@deriving show]
