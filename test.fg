@@ -1,0 +1,13 @@
+module X = 
+  type t
+
+  let value x y = [ x; y ]
+  let make () = { test = true; test2 = false }
+end
+
+let func a b =
+  let z = X.make () in
+  X.value z 1.5
+;;
+
+let () = func 1 2
