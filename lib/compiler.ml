@@ -3,13 +3,13 @@ module Ast = Fungo_ast
 
 let ( >>= ) = Result.( >>= )
 let ( >>| ) = Result.( >>| )
+let ( >> ) f g x = g (f x)
 let err f = Result.map_error ~f
 
 type error =
   | ParserError of Parser.parser_error
   | LexerError of Lexer.lexer_error
 [@@deriving show]
-
 let compile file_name =
   let input = Stdio.In_channel.read_all file_name in
   Lexer.lex input
