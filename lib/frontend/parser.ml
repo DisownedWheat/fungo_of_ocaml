@@ -298,11 +298,11 @@ and parse_expression tokens bindings =
   parse_binary_op (node, tokens)
   >>= fun (node, tokens) ->
   match tokens with
+  | T.Operator (T.Semicolon, _) :: T.Operator (T.Semicolon, _) :: rest -> Ok (node, rest)
   | T.Operator (T.Semicolon, _) :: rest ->
     parse_expression rest [] >>| fun (right, rest) -> Expr.VoidExpr (node, right), rest
   | _ -> Ok (node, tokens)
 
-(* TODO: Function calls *)
 and parse_expr ?(inside_func_call = false) tokens =
   let expr = function
     | T.Operator (T.LParen, x) :: T.Operator (T.RParen, _) :: tail ->
