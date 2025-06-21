@@ -1,6 +1,6 @@
 (library
  (name fungo_lib)
- (libraries base utop stdio)
+ (libraries base utop stdio ppx_deriving)
  (preprocess
   (pps ppx_deriving.show ppx_deriving.eq))
  (flags
